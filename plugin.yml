@@ -1,0 +1,325 @@
+name: BANana
+version: 1.0.9
+main: us.thetaco.banana.Banana
+authors: [ TheEntropy, activates, ApoPanda ]
+website: http://thetaco.us/forums
+depend: [ uuidAPI ]
+commands:
+    ban:
+        description: Used to ban players!
+        usage: /ban <player> [message]
+    tempban:
+        description: Used to temp-ban players!
+        usage: /tban <player> <days:hours:minutes:seconds> [message]
+    unban:
+        description: Used to unban players
+        usage: /unban <player>
+    banlist:
+        description: Used to list all players who are currently banned and tempbanned
+        usage: /banlist
+    ipbanlist:
+        description: Used to list all banned IP addresses
+        usage: /ipbanlist
+    warn:
+        description: Used to warn players!
+        usage: /warn <player> [message]
+    kick:
+        description: Kicks the specified player from the game
+        usage: /kick <player> [message]
+    listwarnings:
+        description: Lists the warnings of the specified players (if any)
+        usage: /listwarnings <player>
+    delwarning:
+        description: Deletes warnings by ID straight from the database. To find the ID of a warning, use /listwarnings
+        usage: /delwarning <ID>
+    mywarns:
+        description: Lists all the warnings of the sender
+        usage: /mywarns
+    banip:
+        description: Bans an ip
+        usage: /banip <player/ip> [messsage]
+    tempbanip:
+        description: Temporarily bans the specified IP
+        usage: /tempbanip <player/ip> <days:hours:minutes:seconds> [message]
+    unbanip:
+        description: Unbans a banned IP address
+        usage: /unbanip <player/ip>
+    mute:
+        description: Mutes the specified player. Specify a reason for logging purposes (optional)
+        usage: /mute <player> [reason]
+    tempmute:
+        description: Mutes a player for the specified amount of time. Specify a reason for logging purposes (optional)
+        usage: /tempmute <player> <days:hours:minutes:seconds> [reason]
+    unmute:
+        description: Allows you to unmute a player
+        usage: /unmute <player>
+    kickall:
+        description: Kicks all players on the server.. Even ones with immunity permissions
+        usage: /kickall
+    addstaff:
+        description: Used to add a staff member (so they will be able to use the server in staff mode)
+        usage: /addstaff <player>
+    rmstaff:
+        description: Used to remove a staff member (so they will be kicked when the server is in staff mode)
+        usage: /rmstaff <player>
+    liststaff:
+        description: Used to list all of the staff members that will not be kicked when the server enters staff mode
+        usage: /liststaff
+    togglestaffmode:
+        description: Toggles staff-mode on and off
+        usage: /togglestaffmode
+    purgewarnings:
+        descripton: Purges the warnings of a player
+        usage: /purgewarnings <player>
+    banana:
+        description: Generic command for the plugin
+        usage: /banana [args]
+    baninfo:
+        description: Used to retrieve ban information on a player
+        usage: /baninfo <player>
+permissions:
+    banana.*:
+        description: Gives you access to ALL the permissions in this plugin
+        children:
+            banana.commands.ban: true
+            banana.commands.tempban: true
+            banana.commands.unban: true
+            banana.commands.banlist: true
+            banana.commands.ipbanlist: true
+            banana.commands.warn: true
+            banana.commands.listwarnings: true
+            banana.commands.delwarning: true
+            banana.commands.mywarns: true
+            banana.commands.banip: true
+            banana.commands.tempbanip: true
+            banana.commands.mute: true
+            banana.commands.tempmute: true
+            banana.commands.unmute: true
+            banana.commands.kickall: true
+            banana.commands.addstaff: true
+            banana.commands.rmstaff: true
+            banana.commands.liststaff: true
+            banana.commands.togglestaffmode: true
+            banana.commands.purgewarnings: true
+            banana.commands.reload: true
+            banana.commands.baninfo: true
+            banana.announcements.receive: true
+            banana.announcements.receive.kick: true
+            banana.announcements.receive.ban: true
+            banana.announcements.receive.mute: true
+            banana.announcements.receive.tempban: true
+            banana.announcements.receive.banip: true
+            banana.announcements.receive.tempbanip: true
+            banana.announcements.receive.tempmute: true
+            banana.announcements.receive.unban: true
+            banana.announcements.receive.unmute: true
+            banana.announcements.receive.warning: true
+            banana.announcements.receive.unbanip: true
+            banana.notify.mute: true
+            banana.notify.tempmute: true
+            banana.notify.unmute: true
+            banana.notify.warning: true
+            banana.immune.ban: true
+            banana.immune.banip: true
+            banana.immune.kick: true
+            banana.immune.mute: true
+            banana.immune.tempban: true
+            banana.immune.tempbanip: true
+            banana.immune.tempmute: true
+            banana.immune.warn: true
+    banana.commands.*:
+        description: Gives you access to all commands from this plugin
+        children:
+            banana.commands.ban: true
+            banana.commands.tempban: true
+            banana.commands.unban: true
+            banana.commands.banlist: true
+            banana.commands.ipbanlist: true
+            banana.commands.warn: true
+            banana.commands.listwarnings: true
+            banana.commands.delwarning: true
+            banana.commands.mywarns: true
+            banana.commands.banip: true
+            banana.commands.tempbanip: true
+            banana.commands.mute: true
+            banana.commands.tempmute: true
+            banana.commands.unmute: true
+            banana.commands.kickall: true
+            banana.commands.addstaff: true
+            banana.commands.rmstaff: true
+            banana.commands.liststaff: true
+            banana.commands.togglestaffmode: true
+            banana.commands.purgewarnings: true
+            banana.commands.reload: true
+            banana.commands.baninfo: true
+    banana.announcements.*:
+        description: Gives you acccess to all announcement related permissions from this plugin
+        children:
+            banana.announcements.receive: true
+            banana.announcements.receive.kick: true
+            banana.announcements.receive.ban: true
+            banana.announcements.receive.mute: true
+            banana.announcements.receive.tempban: true
+            banana.announcements.receive.banip: true
+            banana.announcements.receive.tempbanip: true
+            banana.announcements.receive.tempmute: true
+            banana.announcements.receive.unban: true
+            banana.announcements.receive.unmute: true
+            banana.announcements.receive.warning: true
+            banana.announcements.receive.unbanip: true
+    banana.notify.*:
+        description: Gives you access to all notification related permissions from this plugin
+        children:
+            banana.notify.mute: true
+            banana.notify.tempmute: true
+            banana.notify.unmute: true
+            banana.notify.warning: true
+    banana.immune.*:
+        description: Gives you immunity to everything from this plugin
+        children:
+            banana.immune.ban: true
+            banana.immune.banip: true
+            banana.immune.kick: true
+            banana.immune.mute: true
+            banana.immune.tempban: true
+            banana.immune.tempbanip: true
+            banana.immune.tempmute: true
+            banana.immune.warn: true
+    banana.commands.ban:
+        description: Gives you access to /ban
+        default: op
+    banana.commands.tempban:
+        description: Gives you access to /tempban
+        default: op
+    banana.commands.unban:
+        description: Gives you access to /unban
+        default: op
+    banana.commands.banlist:
+        description: Gives you access to /banlist
+        default: op
+    banana.commands.ipbanlist:
+        description: Gives you access to /ipbanlist
+        default: op
+    banana.commands.warn:
+        description: Gives you access to /warn
+        default: op
+    banana.commands.listwarnings:
+        description: Gives you access to /listwarnings
+        default: op
+    banana.commands.delwarning:
+        description: Gives you access to /delwarning
+        default: op
+    banana.commands.mywarns:
+        description: Gives you access to /mywarns
+        default: true
+    banana.commands.banip:
+        description: Gives you access to /banip
+        default: op
+    banana.commands.tempbanip:
+        description: Gives you access to /tempbanip
+        default: op
+    banana.commands.unbanip:
+        description: Gives you access to /unbanip
+        default: op
+    banana.commands.mute:
+        description: Gives you access to /mute
+        default: op
+    banana.commands.tempmute:
+        description: Gives you access to /tempmute
+        default: op
+    banana.commands.unmute:
+        description: Gives you access to /unmute
+        default: op
+    banana.commands.kickall:
+        description: Gives you access to /kickall
+        default: op
+    banana.commands.addstaff:
+        description: Gives you access to /addstaff
+        default: op
+    banana.commands.rmstaff:
+        description: Gives you access to /rmstaff
+        default: op
+    banana.commands.liststaff:
+        description: Gives you access to /liststaff
+        default: op
+    banana.commands.togglestaffmode:
+        description: Gives you access to /togglestaffmode
+        default: op
+    banana.commands.purgewarnings:
+        description: Gives you access to /purgewarnings
+        default: op
+    banana.commands.reload:
+        description: Gives you access to /banana reload
+        default: op
+    banana.commands.baninfo:
+        description: Gives you access to the /baninfo command
+        default: op
+    banana.announcements.receive:
+        description: Allows you receive announcements. This is needed to receive any other announcements
+        default: true
+    banana.announcements.receive.kick:
+        description: Allows you to receive announcements of players getting kicked
+        default: true
+    banana.announcements.receive.ban:
+        description: Allows you to receive announcements of players getting banned
+        default: true
+    banana.announcements.receive.mute:
+        description: Allows you to receive announcements of players getting muted
+        default: true
+    banana.announcements.receive.tempban:
+        description: Allows you to receive announcements of players getting tempbanned
+        default: true
+    banana.announcements.receive.banip:
+        description: Allows you to receive notification of players getting ip banned
+        default: true
+    banana.announcements.receive.tempbanip:
+        description: Allows you to receive notifications of players getting temp ip banned
+        default: true
+    banana.announcements.receive.tempmute:
+        description: Allows you to receive notifications of players getting temp muted
+        default: true
+    banana.announcements.receive.unban:
+        description: Allows you to receive notifications of players getting unbanned
+        default: true
+    banana.announcements.receive.unmute:
+        description: Allows you to receive notifications of players getting unmuted
+        default: true
+    banana.announcements.receive.warning:
+        description: Allows you to receive notifications of players getting warned
+        default: true
+    banana.notify.mute:
+        description: Allows a player to be notified when they are muted
+        default: true
+    banana.notify.tempmute:
+        description: Allows a player to be notified when they are tempmuted
+        default: true
+    banana.notify.warning:
+        description: Allows a player to be notified when they are warned
+        default: true
+    banana.notify.unmute:
+        description: Allows a player to be notified when they are unmuted (both auto and manual)
+        default: true
+    banana.immune.ban:
+        description: Prevents you from being banned
+        default: op
+    banana.immune.banip:
+        description: Prevents you from being ip banned
+        default: op
+    banana.immune.kick:
+        description: Prevents you from being kicked
+        default: op
+    banana.immune.mute:
+        description: Prevents you from being muted
+        default: op
+    banana.immune.tempban:
+        description: Prevents you from being temp banned
+        default: op
+    banana.immune.tempbanip:
+        description: Prevents you from being ip temp banned
+        default: op
+    banana.immune.tempmute:
+        description: Prevents you from being temp muted
+        default: op
+    banana.immune.warn:
+        description: Prevents you from being warned
+        default: op
