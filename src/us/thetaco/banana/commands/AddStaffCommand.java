@@ -100,9 +100,6 @@ public class AddStaffCommand implements CommandExecutor, OfflineCallback {
 			return;
 		}
 		
-		// If the UUID is not null, we need to add them to the database then add them to the staff
-		Banana.getDatabaseManager().asyncUpdatePlayer(uuid, "none", playerName);
-		
 		this.addStaff(uuid, playerName);
 		
 	}

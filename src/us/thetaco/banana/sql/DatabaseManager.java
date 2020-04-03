@@ -19,7 +19,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 
-import info.dyndns.thetaco.uuid.api.Main;
 import us.thetaco.banana.Banana;
 import us.thetaco.banana.utils.CommandType;
 import us.thetaco.banana.utils.Lang;
@@ -1167,7 +1166,7 @@ public class DatabaseManager {
 		@Override
 		public void run() {
 			
-			sender.sendMessage(Lang.WARNING_LIST_HEADER.parseObject((new Main()).getLatestName(uuid)));
+			sender.sendMessage(Lang.WARNING_LIST_HEADER.parseObject(Banana.getPlayerCache().getLatestName(uuid)));
 			
 			for (Integer i : warnings.keySet()) {
 				
@@ -1316,7 +1315,7 @@ public class DatabaseManager {
 			Connection connection = null;
 			
 			// A list to keep track of what player's have been removed
-			List<Integer> ranUpdates = new ArrayList<Integer>();
+			List<PlayerShell> ranUpdates = new ArrayList<PlayerShell>();
 			
 			while (!Thread.interrupted()) {
 				
@@ -1385,8 +1384,7 @@ public class DatabaseManager {
 						queueEntry(sql);
 
 						// Add the updated player's at the end
-						
-						ranUpdates.add(i);
+						ranUpdates.add(p);
 						
 					} catch (Exception e) {
 
@@ -1401,16 +1399,14 @@ public class DatabaseManager {
 				}
 
 				// Remove updated players from list
-				for (int i : ranUpdates) {
+				for (PlayerShell p : ranUpdates) {
 					
-					playerShells.remove(i);
+					playerShells.remove(p);
 					
 				}
 				
-				if (ranUpdates.size() > 0) {
-					// Erase all values from ranUpdates
-					ranUpdates.clear();
-				}
+				// Clear out update table
+				ranUpdates.clear();
 				
 				// Sleep on it for a while
 				try {

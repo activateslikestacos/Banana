@@ -124,7 +124,7 @@ public class Banana extends JavaPlugin {
 		toggleStaffModeCommand = new ToggleStaffModeCommand();
 		purgeWarningsCommand = new PurgeWarnings();
 		unMuteCommand = new UnMuteCommand();
-		banInfoCommand = new BanInfoCommand();
+		banInfoCommand = new BanInfoCommand(this);
 		configManager = new ConfigManager(this);
 		offlineUUIDHandler = new OfflineUUIDHandler(this);
 		
