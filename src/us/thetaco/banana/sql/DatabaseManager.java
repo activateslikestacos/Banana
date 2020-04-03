@@ -58,12 +58,15 @@ public class DatabaseManager {
 		PURGE_WARNINGS,
 		ADD_STAFF,
 		RM_STAFF,
-		KICK_ALL;
+		KICK_ALL,
+		PLAYER;
 	}
 	
+	private CacheUpdater cacheUpdater;
 	private Banana plugin;
 	public DatabaseManager(Banana plugin) {
 		this.plugin = plugin;
+		this.cacheUpdater = new CacheUpdater();
 	}
 	
 	private Map<Integer, String> queuedEntries = new HashMap<Integer, String>();
@@ -90,13 +93,28 @@ public class DatabaseManager {
 	/** Used to start the update loop...
 	 * 
 	 */
-	public void startLoop() {
+	public Thread startLoop() {
 		
 		DatabaseManager.setUpdating(true);
 		
 		Thread workerThread = new Thread(new Worker(plugin.getDataFolder()));
 		
 		workerThread.start();
+		
+		return workerThread;
+		
+	}
+	
+	/** Used to start the player updater thread!
+	 * 
+	 */
+	public Thread startPlayerThread() {
+		
+		Thread workerThread = new Thread(new PlayerUpdater());
+		
+		workerThread.start();
+		
+		return workerThread;
 		
 	}
 	
@@ -130,7 +148,7 @@ public class DatabaseManager {
 			Connection connection;
 			List<Integer> ranItems;
 			
-			while (DatabaseManager.UPDATE) {
+			while (DatabaseManager.UPDATE && !Thread.interrupted()) {
 			
 				// update database entries here
 				if (queuedEntries.size() > 0) {
@@ -229,6 +247,44 @@ public class DatabaseManager {
 			
 		}
 		
+		private class UpdateShell {
+			
+			private int updateID;
+			private String updateType;
+			private String updateData;
+			private String updateSender;
+			private String currentNames;
+			
+			public UpdateShell(int updateID, String updateType, String updateData, String updateSender, String currentNames) {
+				this.updateID = updateID;
+				this.updateType = updateType;
+				this.updateData = updateData;
+				this.updateSender = updateSender;
+				this.currentNames = currentNames;
+			}
+			
+			public int getUpdateID() {
+				return updateID;
+			}
+			
+			public UpdateType getUpdateType() {
+				return UpdateType.valueOf(updateType);
+			}
+			
+			public String getUpdateData() {
+				return updateData;
+			}
+			
+			public String getUpdateSender() {
+				return updateSender;
+			}
+			
+			public String getCurrentNames() {
+				return currentNames;
+			}
+			
+		}
+		
 		/** Checks if there are any updates that needs to be made for the cache
 		 * 
 		 */
@@ -252,6 +308,9 @@ public class DatabaseManager {
 				// make a map to store what IDs are going to be updated, and what to set the names as
 				Map<Integer, String> ranUpdates = new HashMap<Integer, String>();
 				
+				// A list for holding collected updates
+				List<UpdateShell> updates = new ArrayList<UpdateShell>();
+				
 				// loop through and start checking!
 				while (rs.next()) {
 					
@@ -271,19 +330,52 @@ public class DatabaseManager {
 					
 					if (contains == false) {
 						
-						// if it hasn't seen this update yet, then we update it here
-						
-						// pass the data over to the handler
-						new CacheUpdater().handleUpdate(UpdateType.valueOf(rs.getString("type")), rs.getString("data"), rs.getString("published"));
-						
-						// make sure to add to the list of what updates we ran
-						ranUpdates.put(rs.getInt("ID"), currentNames + " " + Values.SERVER_NAME);
+						// Collect update data for later use
+						updates.add(new UpdateShell(rs.getInt("ID"), rs.getString("type"), rs.getString("data"), rs.getString("published"), currentNames));
+
 					}
 										
 				}
 				
 				// close the previous statement
 				statement.close();
+				
+				// Check if this contains any player updates
+				List<Integer> playerIndexes = new ArrayList<Integer>();
+				for (int i = 0; i < updates.size(); i++) {
+					
+					if (updates.get(i).getUpdateType() == UpdateType.PLAYER)
+						playerIndexes.add(i);
+					
+				}
+				
+				// Check to see if there's any player updates, and run them first (ensuring to update the ranUpdates map)
+				if (playerIndexes.size() > 0) {
+					
+					for (int i = 0; i < playerIndexes.size(); i++) {
+						
+						UpdateShell u = updates.get(i);
+						
+						cacheUpdater.handleUpdate(u.getUpdateType(), u.getUpdateData(), u.getUpdateSender());
+						ranUpdates.put(u.getUpdateID(), u.getCurrentNames() + " " + Values.SERVER_NAME);
+						
+					}
+					
+				}
+				
+				// Remove the updates that have been performed from the update shell arraylist
+				for (int i : playerIndexes) {
+					updates.remove(i);
+				}
+				
+				// Now loop through and finish the rest (if there are any)
+				
+				for (UpdateShell u : updates) {
+					
+					cacheUpdater.handleUpdate(u.getUpdateType(), u.getUpdateData(), u.getUpdateSender());
+					ranUpdates.put(u.getUpdateID(), u.getCurrentNames() + " " + Values.SERVER_NAME);
+					
+				}
 				
 				// handle updating the records in the database here
 				// start by looping through the list we made above and removing anything necessary
@@ -1171,113 +1263,163 @@ public class DatabaseManager {
 		
 	}
 	
+	// Used for holding player update data that is used by the seperate thread
+	private class PlayerShell {
+		
+		// A sort of struct (like in C++)
+		
+		public String uuid, address, playerName;
+		
+		public PlayerShell(String uuid, String address, String playerName) {
+			this.uuid = uuid;
+			this.address = address;
+			this.playerName = playerName;
+		}
+		
+	}
+	
+	private List<PlayerShell> playerShells = new ArrayList<PlayerShell>();
+	
 	/** Used to async update the player's information in the database. This method will also update the local cache of the
 	 * player's username. Set the address to null if there isn't one
 	 * @param uuid The uuid of the player
 	 * @param address The player's ip address
 	 * @param playerName the player's latest username
 	 */
-	public void asyncUpdatePlayer(String uuid, String address, String playerName) {
+	public synchronized void asyncUpdatePlayer(String uuid, String address, String playerName) {
 		
 		// update the cache information, too
 		Banana.getPlayerCache().addLatestName(uuid, playerName);
 		Banana.getPlayerCache().addAddress(uuid.toString(), address);
 		
-		Thread worker = new Thread(new PlayerUpdater(uuid, address, playerName));
+		// Add players to the queue of things that need to be updated
+		playerShells.add(new PlayerShell(uuid, address, playerName));
 		
-		worker.start();
+		// Update the other servers with this information if mysql is being used
+		
+		if (Values.USE_MYSQL) {
+			
+			String preparedString = "INSERT INTO updates (type, data, date, executed, published) VALUES ('" + UpdateType.PLAYER + "', '" + uuid + "{-S-P-L-I-T-}" + address + "{-S-P-L-I-T-}" + playerName + "', '" + System.currentTimeMillis() + "', '" + Values.SERVER_NAME + "', '" + Values.SERVER_NAME + "')";
+		
+			// Send it to the database
+			queueEntry(preparedString);
+		
+		}
 		
 	}
 	
 	private class PlayerUpdater implements Runnable {
-
-		
-		String uuid;
-		String address;
-		String playerName;
-		public PlayerUpdater(String uuid, String address, String playerName) {
-			this.uuid = uuid;
-			this.address = address;
-			this.playerName = playerName;
-		}
 		
 		@Override
 		public void run() {
 
-			boolean accessAble = false;
-
 			Connection connection = null;
 			
-			while (!accessAble) {
+			// A list to keep track of what player's have been removed
+			List<Integer> ranUpdates = new ArrayList<Integer>();
+			
+			while (!Thread.interrupted()) {
+				
+				for (int i = 0; i < playerShells.size(); i++) {
 
-				try {
+					PlayerShell p = playerShells.get(i);
+					
+					try {
+						
+						Class.forName("org.sqlite.JDBC");
 
-					Class.forName("org.sqlite.JDBC");
+						// Check if MySQL is requested and use it if it's enabled
+						if (Values.USE_MYSQL) {
 
-					// Check if MySQL is requested and use it if it's enabled
-					if (Values.USE_MYSQL) {
+							// connect to remote database here
+
+							connection = DriverManager.getConnection(
+									"jdbc:mysql://" + Values.MYSQL_ADDRESS + ":" + Values.MYSQL_PORT + "/"
+											+ Values.MYSQL_DATABASE_NAME,
+									Values.MYSQL_DATABASE_USERNAME, Values.MYSQL_DATABASE_PASSWORD);
+
+						} else {
+
+							// just create a the sqlite connection here
+
+							// open a connection
+							connection = DriverManager.getConnection(
+									"jdbc:sqlite:" + plugin.getDataFolder().getAbsolutePath() + "/Banana.db");
+
+						}
+
+						// turning off autocommit
+						connection.setAutoCommit(false);
+
+						Thread.sleep(1000);
+
+						Statement statement = connection.createStatement();
+
+						String sql = "SELECT * FROM players WHERE UUID='" + p.uuid + "'";
+
+						ResultSet rs = statement.executeQuery(sql);
+
+						boolean doesContain = rs.next();
+
+						if (doesContain) {
+
+							// if this runs, we know to update the already existing
+							// row
+
+							sql = "UPDATE players SET address='" + p.address + "', playername='" + p.playerName
+									+ "' WHERE UUID='" + p.uuid + "'";
+
+						} else {
+
+							// if this runs, we need to insert the new information
+
+							sql = "INSERT INTO players (UUID, address, playername, warnings) VALUES ('" + p.uuid + "', '"
+									+ p.address + "', '" + p.playerName + "', 0)";
+
+						}
+
+						statement.close();
+						connection.close();
+
+						// update what is needed to be updated
+						queueEntry(sql);
+
+						// Add the updated player's at the end
 						
-						// connect to remote database here				
+						ranUpdates.add(i);
 						
-						connection = DriverManager.getConnection("jdbc:mysql://" + Values.MYSQL_ADDRESS + ":" + Values.MYSQL_PORT + "/" + Values.MYSQL_DATABASE_NAME, Values.MYSQL_DATABASE_USERNAME, Values.MYSQL_DATABASE_PASSWORD);
-						
-					} else {
-						
-						// just create a the sqlite connection here
-						
-						// open a connection
-						connection = DriverManager.getConnection("jdbc:sqlite:" + plugin.getDataFolder().getAbsolutePath() + "/Banana.db");
-						
+					} catch (Exception e) {
+
+						if (connection != null)
+							try {
+								connection.close();
+							} catch (SQLException e1) {
+							}
+
 					}
 
-					// turning off autocommit
-					connection.setAutoCommit(false);
-					
-					Thread.sleep(1000);
-
-					Statement statement = connection.createStatement();
-
-					String sql = "SELECT * FROM players WHERE UUID='" + uuid + "'";
-
-					ResultSet rs = statement.executeQuery(sql);
-
-					boolean doesContain = rs.next();
-
-					if (doesContain) {
-
-						// if this runs, we know to update the already existing
-						// row
-
-						sql = "UPDATE players SET address='" + address + "', playername='" + playerName
-								+ "' WHERE UUID='" + uuid + "'";
-
-					} else {
-
-						// if this runs, we need to insert the new information
-
-						sql = "INSERT INTO players (UUID, address, playername, warnings) VALUES ('" + uuid + "', '"
-								+ address + "', '" + playerName + "', 0)";
-
-					}
-
-					statement.close();
-					connection.close();
-
-					// update what is needed to be updated
-					queueEntry(sql);
-
-					accessAble = true;
-					break;
-
-				} catch (Exception e) {
-					
-					if (connection != null)
-						try {
-							connection.close();
-						} catch (SQLException e1) {}
-					
 				}
 
+				// Remove updated players from list
+				for (int i : ranUpdates) {
+					
+					playerShells.remove(i);
+					
+				}
+				
+				if (ranUpdates.size() > 0) {
+					// Erase all values from ranUpdates
+					ranUpdates.clear();
+				}
+				
+				// Sleep on it for a while
+				try {
+					// Sleep for ~1/2 a second
+					Thread.sleep(500);
+				} catch (InterruptedException e) {
+					// We expect the thread to get interrupted at some point
+				}
+				
 			}
 
 		}

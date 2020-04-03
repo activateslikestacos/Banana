@@ -219,14 +219,11 @@ public class PlayerCache {
 	public String getUUIDByLatestName(String playerName) {
 		
 		// Search through the map for the username
-		
-		String toReturn;
-		
+
 		for (String s : this.latestName.keySet()) {
 			
-			toReturn = new String(this.latestName.get(s));
-			if (toReturn.equalsIgnoreCase(playerName))
-				return toReturn;
+			if (this.latestName.get(s).equalsIgnoreCase(playerName))
+				return s;
 			
 		}
 		

@@ -28,7 +28,7 @@ public class CacheUpdater {
 	 * @param type The type of update sent from the database
 	 * @param data The extra data provided by the server that published the update
 	 */
-	public void handleUpdate(Enum<UpdateType> type, String data, String updateSender) {
+	public synchronized void handleUpdate(Enum<UpdateType> type, String data, String updateSender) {
 		
 		// gather all of the information and split up the data etc
 		String[] updateData = data.split("\\{-S-P-L-I-T-\\}");
@@ -105,7 +105,7 @@ public class CacheUpdater {
 				// start layin down dat ban!
 				
 				// prepare the banner name here
-				String bannerName = new Main().getLatestName(bannerUUID);
+				String bannerName = Banana.getPlayerCache().getLatestName(bannerUUID);
 				
 				if (bannerName == null) bannerName = Lang.CONSOLE_NAME.toString();
 				
@@ -513,6 +513,21 @@ public class CacheUpdater {
 				// log the message that the server has been updated
 				SimpleLogger.logMessage("Kick all update received from server " + updateSender + ". Update has been applied to local cache.");
 				
+			} else if (type == UpdateType.PLAYER) {
+				
+				// Handle the update type being a player
+				
+				String playerUUID = updateData[0];
+				String playerAddress = updateData[1];
+				String playerName = updateData[2];
+				
+				// Apply the data to the cache
+				Banana.getPlayerCache().addUUID(playerUUID, playerName);
+				Banana.getPlayerCache().addAddress(playerUUID, playerAddress);
+				
+				// log the message that the server has been updated
+				SimpleLogger.logMessage("Player update received from server " + updateSender + ". Update has been applied to local cache.");
+				
 			}
 		
 		} catch (Exception e) {
@@ -674,13 +689,13 @@ public class CacheUpdater {
 			@Override
 			public void run() {
 				
-				String bannerName = (new Main()).getLatestName(bannerUUID);
+				String bannerName = Banana.getPlayerCache().getLatestName(bannerUUID);
             	
             	if (bannerName == null) {
             		bannerName = Lang.CONSOLE_NAME.toString();
             	}
             	
-            	Action.broadcastMessage(Action.BAN, Lang.BAN_BROADCAST.parseWarningBroadcast(bannerName, (new Main()).getLatestName(bannedUUID), banMessage));
+            	Action.broadcastMessage(Action.BAN, Lang.BAN_BROADCAST.parseWarningBroadcast(bannerName, Banana.getPlayerCache().getLatestName(bannedUUID), banMessage));
 				
 			}
 			

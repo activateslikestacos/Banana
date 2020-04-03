@@ -120,6 +120,9 @@ public class OfflineUUIDHandler {
 						        new BigInteger(noDashUUID.substring(0, 16), 16).longValue(),
 						        new BigInteger(noDashUUID.substring(16), 16).longValue());
 						
+						// Post the update to the other servers
+						Banana.getDatabaseManager().asyncUpdatePlayer(uuid.toString(), "none", UUIDObject.get("name").toString());
+						
 						callbackList.get(s).fetchedName(uuid.toString(),
 								UUIDObject.get("name").toString());
 

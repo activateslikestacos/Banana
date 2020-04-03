@@ -83,7 +83,7 @@ public class Banana extends JavaPlugin {
 	private BananaCommand bananaCommand;
 	private BanInfoCommand banInfoCommand;
 	private OfflineUUIDHandler offlineUUIDHandler;
-	private Thread oUUIDThread;
+	private Thread oUUIDThread, dbUpdateThread, playerUpdateThread;
 	private static YamlConfiguration LANG;
     private static File LANG_FILE;
     private static boolean STAFF_MODE;
@@ -100,7 +100,7 @@ public class Banana extends JavaPlugin {
 		Banana.PLAYER_CACHE = new PlayerCache();
 		Banana.MUTE_CACHE = new MuteCache();
 		pLoginListener = new PlayerLoginListener();
-		banCommand = new BanCommand();
+		banCommand = new BanCommand(this);
 		tempBanCommand = new TempBanCommand();
 		warnCommand = new WarnCommand();
 		kickCommand = new KickCommand();
@@ -151,7 +151,10 @@ public class Banana extends JavaPlugin {
 		this.registerCommands();
 		
 		// starting the database loop
-		Banana.DATABASE.startLoop();
+		dbUpdateThread = Banana.DATABASE.startLoop();
+		
+		// starting the player update thread
+		playerUpdateThread = Banana.DATABASE.startPlayerThread();
 		
 		// enabling the mute checker
 		Banana.MUTE_CHECKER_ID = this.enableMuteChecker(5);
@@ -170,8 +173,11 @@ public class Banana extends JavaPlugin {
 		// disabling the mute checker
 		this.disableMuteChecker();
 		
-		// Disable UUID Thread
+		// Disable all threads
 		oUUIDThread.interrupt();
+		dbUpdateThread.interrupt();
+		playerUpdateThread.interrupt();
+		
 		
 	}
 	
