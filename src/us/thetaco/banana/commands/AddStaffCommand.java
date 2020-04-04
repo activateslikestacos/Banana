@@ -13,7 +13,7 @@ import us.thetaco.banana.utils.OfflineCallback;
 public class AddStaffCommand implements CommandExecutor, OfflineCallback {
 
 	// Used by the async thread to respond to sender
-	private Player player;
+	private CommandSender sender;
 	private Banana plugin;
 	
 	public AddStaffCommand(Banana plugin) {
@@ -23,25 +23,25 @@ public class AddStaffCommand implements CommandExecutor, OfflineCallback {
 	@Override
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 
-		if (!(sender instanceof Player)) {
-			
-			// This will run if the sender is not player
-			return new AddStaffCommandConsole(plugin).runAddStaffCommand(sender, args);
-			
-		}
+		boolean isConsole = !(sender instanceof Player);
 		
 		// run this if the sender is a player
-		player = (Player) sender;
 		
-		if (!player.hasPermission("banana.commands.addstaff")) {
-			player.sendMessage(Lang.NO_PERMISSIONS.toString());
-			return true;
+		if (!isConsole) {
+			
+			if (!((Player)sender).hasPermission("banana.commands.addstaff")) {
+				sender.sendMessage(Lang.NO_PERMISSIONS.toString());
+				return true;
+			}
+
 		}
 		
 		if (args.length < 1) {
-			player.sendMessage(Lang.ADD_STAFF_WRONG_ARGS.toString());
+			sender.sendMessage(Lang.ADD_STAFF_WRONG_ARGS.toString());
 			return true;
 		}
+		
+		this.sender = sender;
 		
 		Player target = Bukkit.getPlayer(args[0]);
 		
@@ -77,14 +77,14 @@ public class AddStaffCommand implements CommandExecutor, OfflineCallback {
 	private void addStaff(String uuid, String playerName) {
 		
 		if (Banana.getPlayerCache().isStaff(uuid)) {
-			player.sendMessage(Lang.ALREADY_STAFF.parseName(playerName));
+			sender.sendMessage(Lang.ALREADY_STAFF.parseName(playerName));
 			return;
 		}
 		
 		Banana.getPlayerCache().addStaff(uuid);
 		Banana.getDatabaseManager().asyncAddStaffMember(uuid);
 		
-		player.sendMessage(Lang.ADD_STAFF_SUCCESS.parseName(playerName));
+		sender.sendMessage(Lang.ADD_STAFF_SUCCESS.parseName(playerName));
 		
 	}
 	
@@ -96,7 +96,7 @@ public class AddStaffCommand implements CommandExecutor, OfflineCallback {
 	public synchronized void fetchedName(String uuid, String playerName) {
 
 		if (uuid == null) {
-			player.sendMessage(Lang.PLAYER_NEVER_ONLINE.parseObject(playerName));
+			sender.sendMessage(Lang.PLAYER_NEVER_ONLINE.parseObject(playerName));
 			return;
 		}
 		

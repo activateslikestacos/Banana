@@ -1,5 +1,7 @@
 package us.thetaco.banana.commands;
 
+import java.util.UUID;
+
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -16,7 +18,10 @@ import us.thetaco.banana.utils.Values;
 
 public class BanCommand implements CommandExecutor, OfflineCallback {
 
-	private Player player;
+	private CommandSender sender;
+	private String senderName;
+	private UUID senderUUID;
+	private boolean isConsole;
 	
 	private Banana plugin;
 	public BanCommand(Banana plugin) {
@@ -29,26 +34,35 @@ public class BanCommand implements CommandExecutor, OfflineCallback {
 	@Override
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 		
-		if (!(sender instanceof Player)) {
+		isConsole = !(sender instanceof Player);
+		
+		if (!isConsole) {
 			
-			// this will run if the sender is console..
-			return new BanCommandConsole(plugin).runBanCommand(sender, args);
+			Player player = (Player) sender;
+			
+			if (!player.hasPermission("banana.commands.ban")) {
+				sender.sendMessage(Lang.NO_PERMISSIONS.toString());
+				return true;
+			}
+			
+			this.senderName = player.getName();
+			this.senderUUID = player.getUniqueId();
+			
+		} else {
+			
+			this.senderName = Lang.CONSOLE_NAME.toString();
 			
 		}
 		
-		// if we get to this point, the sender is a player
-		player = (Player) sender;
-		
-		if (!player.hasPermission("banana.commands.ban")) {
-			player.sendMessage(Lang.NO_PERMISSIONS.toString());
-			return true;
-		}
 		
 		// check to see if they supplied enough arguments
 		if (args.length < 1) {
-			player.sendMessage(Lang.NO_PLAYER_SPECIFIED.toString());
+			sender.sendMessage(Lang.NO_PLAYER_SPECIFIED.toString());
 			return true;
 		}
+		
+		// Copy over sender
+		this.sender = sender;
 		
 		// Copy command arguments
 		cmdArgs = new String[args.length];
@@ -99,7 +113,7 @@ public class BanCommand implements CommandExecutor, OfflineCallback {
 		} else {
 			
 			if (target.hasPermission("banana.immune.ban")) {
-				player.sendMessage(Lang.CANNOT_BE_BANNED.parseName(target.getName()));
+				sender.sendMessage(Lang.CANNOT_BE_BANNED.parseName(target.getName()));
 				return true;
 			}
 			
@@ -110,7 +124,7 @@ public class BanCommand implements CommandExecutor, OfflineCallback {
 		// kick the target if they are online
 		if (this.banPlayer(uuid, args[0].toLowerCase()) && target != null) {
 
-			target.kickPlayer(Lang.BAN_FORMAT.parseBanFormat(player.getName(), banMessage));
+			target.kickPlayer(Lang.BAN_FORMAT.parseBanFormat(senderName, banMessage));
 
 		}
 		
@@ -131,11 +145,11 @@ public class BanCommand implements CommandExecutor, OfflineCallback {
 
 			if (Banana.getBanCache().isTempBanned(uuid)) {
 
-				player.sendMessage(Lang.ALREADY_TEMP_BANNED.parseName(playerName));
+				sender.sendMessage(Lang.ALREADY_TEMP_BANNED.parseName(playerName));
 
 			} else {
 
-				player.sendMessage(Lang.ALREADY_BANNED.parseName(playerName));
+				sender.sendMessage(Lang.ALREADY_BANNED.parseName(playerName));
 
 			}
 
@@ -143,21 +157,31 @@ public class BanCommand implements CommandExecutor, OfflineCallback {
 
 		}
 		
-		// add the player as banned
-		Banana.getBanCache().addBannedUUID(uuid, banMessage, BannerType.PLAYER, player.getUniqueId().toString());
-		Banana.getDatabaseManager().asyncAddBan(uuid, BannerType.PLAYER, player.getUniqueId().toString(), banMessage,
-				false, null, null);
+		if (isConsole) {
+			
+			// add the player as banned
+			Banana.getBanCache().addBannedUUID(uuid, banMessage, BannerType.CONSOLE, null);
+			Banana.getDatabaseManager().asyncAddBan(uuid, BannerType.CONSOLE, null, banMessage, false, null, null);
+			
+			Banana.getDatabaseManager().logCommand(CommandType.BAN, null, cmdArgs, true);
+			
+		} else {
 		
+			// add the player as banned
+			Banana.getBanCache().addBannedUUID(uuid, banMessage, BannerType.PLAYER, senderUUID.toString());
+			Banana.getDatabaseManager().asyncAddBan(uuid, BannerType.PLAYER, senderUUID.toString(), banMessage, false, null, null);
+		
+			Banana.getDatabaseManager().logCommand(CommandType.BAN, senderUUID, cmdArgs, false);
+			
+		}
 
-		player.sendMessage(Lang.BAN_SUCCESS.parseName(playerName));
-
-		Banana.getDatabaseManager().logCommand(CommandType.BAN, player.getUniqueId(), cmdArgs, false);
+		sender.sendMessage(Lang.BAN_SUCCESS.parseName(playerName));
 
 		// check if announcements are enabled for this command.. then release the
 		// annoucnement
 		if (Values.ANNOUNCE_BAN) {
 
-			Action.broadcastMessage(Action.BAN, Lang.BAN_BROADCAST.parseWarningBroadcast(player.getName(), playerName, banMessage));
+			Action.broadcastMessage(Action.BAN, Lang.BAN_BROADCAST.parseWarningBroadcast(senderName, playerName, banMessage));
 
 		}
 		
@@ -170,7 +194,7 @@ public class BanCommand implements CommandExecutor, OfflineCallback {
 		
 		if (uuid == null) {
 			
-			player.sendMessage(Lang.PLAYER_NEVER_ONLINE.parseObject(playerName));
+			sender.sendMessage(Lang.PLAYER_NEVER_ONLINE.parseObject(playerName));
 			return;
 			
 		}

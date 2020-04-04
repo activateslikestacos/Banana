@@ -109,11 +109,11 @@ public class Banana extends JavaPlugin {
 		unbanCommand = new UnBanCommand();
 		banListCommand = new BanListCommand();
 		ipBanListCommand = new IPBanListCommand();
-		banIPCommand = new BanIPCommand();
+		banIPCommand = new BanIPCommand(this);
 		tempBanIPCommand = new TempBanIPCommand();
 		unBanIPCommand = new UnBanIPCommand();
 		delWarningCommand = new DelWarning();
-		muteCommand = new MuteCommand();
+		muteCommand = new MuteCommand(this);
 		tempMuteCommand = new TempMuteCommand();
 		pChatListener = new PlayerChatListener();
 		pCommandListener = new PlayerCommandListener();

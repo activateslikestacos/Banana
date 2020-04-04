@@ -340,32 +340,31 @@ public class DatabaseManager {
 				statement.close();
 				
 				// Check if this contains any player updates
-				List<Integer> playerIndexes = new ArrayList<Integer>();
-				for (int i = 0; i < updates.size(); i++) {
+				List<UpdateShell> shellsToRemove = new ArrayList<UpdateShell>();
+				for (UpdateShell u : updates) {
 					
-					if (updates.get(i).getUpdateType() == UpdateType.PLAYER)
-						playerIndexes.add(i);
+					if (u.getUpdateType() == UpdateType.PLAYER)
+						shellsToRemove.add(u);
 					
 				}
 				
 				// Check to see if there's any player updates, and run them first (ensuring to update the ranUpdates map)
-				if (playerIndexes.size() > 0) {
+				if (shellsToRemove.size() > 0) {
 					
-					for (int i = 0; i < playerIndexes.size(); i++) {
-						
-						UpdateShell u = updates.get(i);
+					for (UpdateShell u : shellsToRemove) {
 						
 						cacheUpdater.handleUpdate(u.getUpdateType(), u.getUpdateData(), u.getUpdateSender());
 						ranUpdates.put(u.getUpdateID(), u.getCurrentNames() + " " + Values.SERVER_NAME);
+						
+						// Remove the update that has been applied
+						updates.remove(u);
 						
 					}
 					
 				}
 				
-				// Remove the updates that have been performed from the update shell arraylist
-				for (int i : playerIndexes) {
-					updates.remove(i);
-				}
+				// Clear out the update shells that were player priority
+				shellsToRemove.clear();
 				
 				// Now loop through and finish the rest (if there are any)
 				
@@ -1062,6 +1061,7 @@ public class DatabaseManager {
 		sender.sendMessage(ChatColor.AQUA + "Searching database.. Please Wait");
 		
 		// passing them to the new thread
+		// TODO: put this in thread with many others!
 		Thread worker = new Thread(new DatabaseReader(plugin, sender, uuid));
 		
 		worker.start();

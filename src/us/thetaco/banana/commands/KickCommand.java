@@ -1,5 +1,7 @@
 package us.thetaco.banana.commands;
 
+import java.util.UUID;
+
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -17,34 +19,41 @@ public class KickCommand implements CommandExecutor {
 	@Override
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 		
-		if (!(sender instanceof Player)) {
-			
-			// this will run if the sender is the console
-			return new KickCommandConsole().runKickCommand(sender, args);
-			
-		}
+		String playerName;
+		UUID senderUUID;
+		boolean isConsole = !(sender instanceof Player);
 		
-		Player player = (Player) sender;
+		if (!isConsole) {
+			
+			if (!((Player)sender).hasPermission("banana.commands.kick")) {
+				sender.sendMessage(Lang.NO_PERMISSIONS.toString());
+				return true;
+			}
 		
-		if (!player.hasPermission("banana.commands.kick")) {
-			player.sendMessage(Lang.NO_PERMISSIONS.toString());
-			return true;
+			playerName = ((Player)sender).getName();
+			senderUUID = ((Player)sender).getUniqueId();
+			
+		} else {
+			
+			playerName = Lang.CONSOLE_NAME.toString();
+			senderUUID = null;
+			
 		}
 		
 		if (args.length < 1) {
-			player.sendMessage(Lang.KICK_WRONG_ARGS.toString());
+			sender.sendMessage(Lang.KICK_WRONG_ARGS.toString());
 			return true;
 		}
 		
 		Player target = Bukkit.getPlayer(args[0]);
 		
 		if (target == null) {
-			player.sendMessage(Lang.PLAYER_NOT_FOUND.parseObject(args[0]));
+			sender.sendMessage(Lang.PLAYER_NOT_FOUND.parseObject(args[0]));
 			return true;
 		} else {
 			
 			if (target.hasPermission("banana.immune.kick")) {
-				player.sendMessage(Lang.PLAYER_CANNOT_BE_KICKED.parseName(target.getName()));
+				sender.sendMessage(Lang.PLAYER_CANNOT_BE_KICKED.parseName(target.getName()));
 				return true;
 			}
 
@@ -70,18 +79,26 @@ public class KickCommand implements CommandExecutor {
 		}
 		
 		// kick the player with the supplied message
-		target.kickPlayer(Lang.KICK_FORMAT.parseBanFormat(player.getName(), message));
+		target.kickPlayer(Lang.KICK_FORMAT.parseBanFormat(playerName, message));
 		
-		Banana.getDatabaseManager().logCommand(CommandType.KICK, player.getUniqueId(), args, false);
+		if (isConsole) {
+			
+			Banana.getDatabaseManager().logCommand(CommandType.KICK, null, args, true);
+			
+		} else {
+		
+			Banana.getDatabaseManager().logCommand(CommandType.KICK, senderUUID, args, false);
+		
+		}
 		
 		// check if announcements are enabled for this command.. then release the annoucnement
 		if (Values.ANNOUNCE_KICK) {
 									
-			Action.broadcastMessage(Action.KICK, Lang.KICK_BROADCAST.parseWarningBroadcast(player.getName(), target.getName(), message));
+			Action.broadcastMessage(Action.KICK, Lang.KICK_BROADCAST.parseWarningBroadcast(playerName, target.getName(), message));
 							
 		}
 			
-		player.sendMessage(Lang.KICK_SUCCESS.parseName(target.getName()));
+		sender.sendMessage(Lang.KICK_SUCCESS.parseName(target.getName()));
 		
 		return true;
 	}

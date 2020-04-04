@@ -746,7 +746,7 @@ public class CacheUpdater {
 			@Override
 			public void run() {
 				
-				Action.broadcastMessage(Action.MUTE, Lang.MUTE_BROADCAST.parseBroadcast(muterName, (new Main()).getLatestName(uuid)));
+				Action.broadcastMessage(Action.MUTE, Lang.MUTE_BROADCAST.parseBroadcast(muterName, Banana.getPlayerCache().getLatestName(uuid)));
 				
 			}
 			

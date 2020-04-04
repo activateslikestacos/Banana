@@ -15,7 +15,7 @@ import us.thetaco.banana.utils.OfflineCallback;
 
 public class BanInfoCommand implements CommandExecutor, OfflineCallback {
 
-	private Player player;
+	private CommandSender sender;
 	
 	private Banana plugin;
 	public BanInfoCommand(Banana plugin) {
@@ -25,27 +25,25 @@ public class BanInfoCommand implements CommandExecutor, OfflineCallback {
 	@Override
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 		
-		if (!(sender instanceof Player)) {
-			
-			// Run this if the sender is console
-			sender.sendMessage("This command cannot be ran from console.. Yet!");
-			
-			return true;
-		}
+		boolean isConsole = !(sender instanceof Player);
 		
-		player = (Player) sender;
-		
-		// check if the player has permissions to run this command
-		if (!player.hasPermission("banana.commands.baninfo")) {
-			player.sendMessage(Lang.NO_PERMISSIONS.toString());
-			return true;
+		if (!isConsole) {
+			
+			// check if the player has permissions to run this command
+			if (!((Player)sender).hasPermission("banana.commands.baninfo")) {
+				sender.sendMessage(Lang.NO_PERMISSIONS.toString());
+				return true;
+			}
+
 		}
 		
 		// check if a player was specified
 		if (args.length < 1) {
-			player.sendMessage(Lang.BAN_INFO_WRONG_ARGS.toString());
+			sender.sendMessage(Lang.BAN_INFO_WRONG_ARGS.toString());
 			return true;
 		}
+		
+		this.sender = sender;
 		
 		// attempt to retrieve information on the specified argument
 		
@@ -151,17 +149,17 @@ public class BanInfoCommand implements CommandExecutor, OfflineCallback {
 		// in one big message!
 		// that message will be made up of several messages, however
 
-		player.sendMessage(Lang.BAN_INFO_HEADER.toString());
-		player.sendMessage(Lang.BAN_INFO_LINE_BAN.parseObject(Boolean.toString(isBanned)));
-		player.sendMessage(Lang.BAN_INFO_LINE_MUTE.parseObject(Boolean.toString(isMuted)));
-		player.sendMessage(Lang.BAN_INFO_LINE_TEMP_MUTE.parseObject(Boolean.toString(isTempMuted)));
-		player.sendMessage(Lang.BAN_INFO_LINE_MUTE_REMOVAL.parseObject(tempMuteRemovalDate));
-		player.sendMessage(Lang.BAN_INFO_LINE_TEMP_BAN.parseObject(Boolean.toString(isTempBanned)));
-		player.sendMessage(Lang.BAN_INFO_LINE_BAN_REMOVAL.parseObject(tempBanRemovalDate));
-		player.sendMessage(Lang.BAN_INFO_LINE_IP_BAN.parseObject(Boolean.toString(isIPBanned)));
-		player.sendMessage(Lang.BAN_INFO_LINE_TEMP_IP_BAN.parseObject(Boolean.toString(isTempIPBanned)));
-		player.sendMessage(Lang.BAN_INFO_LINE_IP_BAN_REMOVAL.parseObject(tempIPBanRemovalDate));
-		player.sendMessage(Lang.BAN_INFO_LINE_PLAYER_IP.parseObject(playerAddress));
+		sender.sendMessage(Lang.BAN_INFO_HEADER.toString());
+		sender.sendMessage(Lang.BAN_INFO_LINE_BAN.parseObject(Boolean.toString(isBanned)));
+		sender.sendMessage(Lang.BAN_INFO_LINE_MUTE.parseObject(Boolean.toString(isMuted)));
+		sender.sendMessage(Lang.BAN_INFO_LINE_TEMP_MUTE.parseObject(Boolean.toString(isTempMuted)));
+		sender.sendMessage(Lang.BAN_INFO_LINE_MUTE_REMOVAL.parseObject(tempMuteRemovalDate));
+		sender.sendMessage(Lang.BAN_INFO_LINE_TEMP_BAN.parseObject(Boolean.toString(isTempBanned)));
+		sender.sendMessage(Lang.BAN_INFO_LINE_BAN_REMOVAL.parseObject(tempBanRemovalDate));
+		sender.sendMessage(Lang.BAN_INFO_LINE_IP_BAN.parseObject(Boolean.toString(isIPBanned)));
+		sender.sendMessage(Lang.BAN_INFO_LINE_TEMP_IP_BAN.parseObject(Boolean.toString(isTempIPBanned)));
+		sender.sendMessage(Lang.BAN_INFO_LINE_IP_BAN_REMOVAL.parseObject(tempIPBanRemovalDate));
+		sender.sendMessage(Lang.BAN_INFO_LINE_PLAYER_IP.parseObject(playerAddress));
 
 	}
 	
@@ -170,7 +168,7 @@ public class BanInfoCommand implements CommandExecutor, OfflineCallback {
 		
 		if (uuid == null) {
 			
-			player.sendMessage(Lang.PLAYER_NOT_FOUND.parseObject(playerName));
+			sender.sendMessage(Lang.PLAYER_NOT_FOUND.parseObject(playerName));
 			return;
 			
 		}

@@ -9,114 +9,65 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import info.dyndns.thetaco.uuid.api.Main;
 import us.thetaco.banana.Banana;
 import us.thetaco.banana.sql.DatabaseManager.BannerType;
 import us.thetaco.banana.utils.Action;
 import us.thetaco.banana.utils.CommandType;
 import us.thetaco.banana.utils.Lang;
+import us.thetaco.banana.utils.OfflineCallback;
 import us.thetaco.banana.utils.Values;
 
-public class BanIPCommand implements CommandExecutor {
+public class BanIPCommand implements CommandExecutor, OfflineCallback {
 
+	private CommandSender sender;
+	private String senderName;
+	private UUID senderUUID;
+	private boolean isConsole;
+	private String[] cmdArgs;
+	private String message;
+	private Banana plugin;
+	public BanIPCommand(Banana plugin) {
+		this.plugin = plugin;
+	}
+	
 	@Override
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 		
-		if (!(sender instanceof Player)) {
+		isConsole = !(sender instanceof Player);
+		
+		if (!isConsole) {
 			
-			// this will run if the sender is not a player	
-			return new BanIPCommandConsole().runBanIPCommand(sender, args);
+			if (!((Player)sender).hasPermission("banana.commands.banip")) {
+				sender.sendMessage(Lang.NO_PERMISSIONS.toString());
+				return true;
+			}
+			
+			senderName = ((Player)sender).getName();
+			senderUUID = ((Player)sender).getUniqueId();
+			
+		} else {
+			
+			senderName = Lang.CONSOLE_NAME.toString();
 			
 		}
 		
-		// this will run if the sender is a player
-		Player player = (Player) sender;
-		
-		if (!player.hasPermission("banana.commands.banip")) {
-			player.sendMessage(Lang.NO_PERMISSIONS.toString());
-			return true;
-		}
 		
 		if (args.length < 1) {
-			player.sendMessage(Lang.BAN_IP_INCORRECT_ARGS.toString());
+			sender.sendMessage(Lang.BAN_IP_INCORRECT_ARGS.toString());
 			return true;
 		}
 		
-		Player target = Bukkit.getPlayer(args[0]);
+		// copy over the sender
+		this.sender = sender;
 		
-		if (target != null) {
-			
-			if (target.hasPermission("banana.immune.banip")) {
-				player.sendMessage(Lang.CANNOT_BE_IP_BANNED.parseName(target.getName()));
-				return true;
-			}
-			
-		}
+		// Assemble the arguments
+		cmdArgs = new String[args.length];
 		
-		String uuid = null;
+		for (int i = 0; i < args.length; i++)
+			cmdArgs[i] = new String(args[i]);
 		
-		if (target == null) {
-			
-			Main main = new Main();
-			
-			uuid = main.getPlayer(args[0]).getUUID();
-			
-		} else {
-			
-			uuid = target.getUniqueId().toString();
-			
-		}
-		
-		String address = null;
-		boolean ipGiven = false;
-		
-		if (uuid == null) {
-			
-			player.sendMessage(Lang.USING_IP.toString());
-			
-			address = args[0];
-			
-			ipGiven = true;
-			
-		} else {
-			
-			String tempAddress = Banana.getPlayerCache().getAddress(uuid);
-			
-			if (tempAddress == null) {
-				player.sendMessage(Lang.NO_IP_STORED.toString());
-				return true;
-			}
-			
-			address = tempAddress;
-			
-		}
-		
-		// If the IP is set to be given, then use that string
-		String nameToUse = new String();
-		
-		if (ipGiven) {
-			nameToUse = address;
-		} else {
-			nameToUse = (new Main()).getLatestName(uuid);
-		}
-		
-		// check to see if the IP is already banned
-		if (Banana.getBanCache().isIPBanned(address)) {
-			
-			if (Banana.getBanCache().isTempBanned(uuid)) {
-				
-				player.sendMessage(Lang.ALREADY_TEMP_BANNED.parseName(nameToUse));
-				
-			} else {
-				
-				player.sendMessage(Lang.ALREADY_BANNED.parseName(nameToUse));
-				
-			}
-			
-			return true;
-		}
-		
-		String message = Lang.DEFAULT_BAN_MESSAGE.toString();
+		// Assemble ban message
+		message = Lang.DEFAULT_BAN_MESSAGE.toString();
 		
 		if (args.length > 1) {
 			
@@ -135,77 +86,201 @@ public class BanIPCommand implements CommandExecutor {
 			
 		}
 		
-		Banana.getBanCache().addBannedIP(address, message, BannerType.PLAYER, player.getUniqueId().toString());
-		Banana.getDatabaseManager().asyncBanIP(address, message, BannerType.PLAYER, player.getUniqueId().toString(), false, null, null);
+		Player target = Bukkit.getPlayer(args[0]);
 		
 		if (target != null) {
 			
-			target.kickPlayer(Lang.BAN_IP_FORMAT.parseBanFormat((new Main()).getLatestName(uuid), message));
+			if (target.hasPermission("banana.immune.banip")) {
+				sender.sendMessage(Lang.CANNOT_BE_IP_BANNED.parseName(target.getName()));
+				return true;
+			}
 			
 		}
 		
-		if (!ipGiven) {
-			player.sendMessage(Lang.IP_BAN_SUCCESS.parseName((new Main()).getLatestName(uuid)));
+		String uuid = null;
+		
+		if (target == null) {
+			
+			uuid = Banana.getPlayerCache().getUUIDByLatestName(args[0].toLowerCase());
+			
+			if (uuid == null) {
+				
+				this.plugin.getOfflineUUIDHandler().addOfflinePlayer(args[0].toLowerCase(), this);
+				return true;
+				
+			}
+			
 		} else {
-			player.sendMessage(Lang.IP_BAN_SUCCESS.parseName(address));
+			
+			uuid = target.getUniqueId().toString();
+			
 		}
 		
-		Banana.getDatabaseManager().logCommand(CommandType.BAN_IP, player.getUniqueId(), args, false);
+		this.banIP(uuid, args[0].toLowerCase());
 		
-		// check if announcements are enabled for this command.. then release the annoucnement
-		if (Values.ANNOUNCE_BANIP) {
-							
-			if (!ipGiven) {
-				Action.broadcastMessage(Action.BANIP, Lang.IP_BAN_BROADCAST.parseWarningBroadcast(player.getName(), (new Main()).getLatestName(uuid), message));
-			} else {
-				Action.broadcastMessage(Action.BANIP, Lang.IP_BAN_BROADCAST.parseWarningBroadcast(player.getName(), address, message));
-			}
-		}
-		
-		// checking to make sure that username's attatched to ips is also enabled
-		if (Values.BAN_USERNAME_OF_IP) {
+		if (target != null) {
 			
-			// get all usernames attatched to the IP
-			List<String> playersWithIP = Banana.getPlayerCache().getPlayersWithIP(address);
-			
-			if (playersWithIP == null) return true;
-			
-			// loop through the list and ban all players who are attatched to that certain IP
-			for (String s : playersWithIP) {
-				
-				// making sure the player isn't already banned
-				if (!Banana.getBanCache().isUUIDBanned(s)) {
-					
-					// going ahead and banning them with the appropriate message
-					Banana.getBanCache().addBannedUUID(s, Lang.PLAYER_IP_AUTOBANNED.parseBanFormat(null, message), BannerType.AUTOBANNED, null);
-					Banana.getDatabaseManager().asyncAddBan(s, BannerType.AUTOBANNED, null, Lang.PLAYER_IP_AUTOBANNED.parseBanFormat(null, message), false, null, null);
-					
-					// check if the player is online and kick them if they are
-					Player duplicate = Bukkit.getPlayer(UUID.fromString(s));
-					
-					if (duplicate != null) {
-						duplicate.kickPlayer(Lang.PLAYER_IP_AUTOBANNED.parseBanFormat(null, message));
-					}
-					
-					// check if announcements are want for this type of ban
-					if (Values.ANNOUNCE_BAN_USERNAME_OF_IP) {
-						
-						// check if announcements are enabled for this command.. then release the annoucnement
-						if (Values.ANNOUNCE_BANIP) {
-									
-							Action.broadcastMessage(Action.BAN, Lang.AUTOBAN_BROADCAST.parseName((new Main()).getLatestName(uuid)));
-									
-						}
-						
-					}
-					
-				}
-				
-			}
+			target.kickPlayer(Lang.BAN_IP_FORMAT.parseBanFormat(senderName, message));
 			
 		}
 		
 		return true;
 	}
 
+	
+	private void banIP(String uuid, String playerName) {
+		
+		String address;
+		boolean ipGiven = false;
+		
+		if (uuid == null) {
+			
+			sender.sendMessage(Lang.USING_IP.toString());
+			
+			address = cmdArgs[0];
+			
+			ipGiven = true;
+			
+		} else {
+			
+			String tempAddress = Banana.getPlayerCache().getAddress(uuid);
+			
+			if (tempAddress == null) {
+				sender.sendMessage(Lang.NO_IP_STORED.toString());
+				return;
+			}
+			
+			address = tempAddress;
+			
+		}
+		
+		// If the IP is set to be given, then use that string
+		String nameToUse;
+
+		if (ipGiven) {
+			nameToUse = address;
+		} else {
+			nameToUse = new String(playerName);
+		}
+		
+		// check to see if the IP is already banned
+		if (Banana.getBanCache().isIPBanned(address)) {
+
+			if (Banana.getBanCache().isTempBanned(uuid)) {
+
+				sender.sendMessage(Lang.ALREADY_TEMP_BANNED.parseName(nameToUse));
+
+			} else {
+
+				sender.sendMessage(Lang.ALREADY_BANNED.parseName(nameToUse));
+
+			}
+
+			return;
+		}
+		
+		if (isConsole) {
+			
+			Banana.getBanCache().addBannedIP(address, message, BannerType.CONSOLE, null);
+			Banana.getDatabaseManager().asyncBanIP(address, message, BannerType.CONSOLE, null, false, null, null);
+			
+			Banana.getDatabaseManager().logCommand(CommandType.BAN_IP, null, cmdArgs, true);
+			
+		} else {
+		
+			Banana.getBanCache().addBannedIP(address, message, BannerType.PLAYER, senderUUID.toString());
+			Banana.getDatabaseManager().asyncBanIP(address, message, BannerType.PLAYER, senderUUID.toString(), false, null, null);
+		
+			Banana.getDatabaseManager().logCommand(CommandType.BAN_IP, senderUUID, cmdArgs, false);
+			
+		}
+		if (!ipGiven) {
+			sender.sendMessage(Lang.IP_BAN_SUCCESS.parseName(playerName));
+		} else {
+			sender.sendMessage(Lang.IP_BAN_SUCCESS.parseName(address));
+		}
+		
+		// check if announcements are enabled for this command.. then release the
+		// announcement
+		if (Values.ANNOUNCE_BANIP) {
+
+			if (!ipGiven) {
+				Action.broadcastMessage(Action.BANIP, Lang.IP_BAN_BROADCAST.parseWarningBroadcast(senderName,
+						playerName, message));
+			} else {
+				Action.broadcastMessage(Action.BANIP,
+						Lang.IP_BAN_BROADCAST.parseWarningBroadcast(senderName, address, message));
+			}
+		}
+		
+		// checking to make sure that username's attatched to ips is also enabled
+		if (Values.BAN_USERNAME_OF_IP) {
+
+			// get all usernames attatched to the IP
+			List<String> playersWithIP = Banana.getPlayerCache().getPlayersWithIP(address);
+
+			if (playersWithIP == null)
+				return;
+
+			// loop through the list and ban all players who are attatched to that certain
+			// IP
+			for (String s : playersWithIP) {
+
+				// making sure the player isn't already banned
+				if (!Banana.getBanCache().isUUIDBanned(s)) {
+
+					// going ahead and banning them with the appropriate message
+					Banana.getBanCache().addBannedUUID(s, Lang.PLAYER_IP_AUTOBANNED.parseBanFormat(null, message),
+							BannerType.AUTOBANNED, null);
+					Banana.getDatabaseManager().asyncAddBan(s, BannerType.AUTOBANNED, null,
+							Lang.PLAYER_IP_AUTOBANNED.parseBanFormat(null, message), false, null, null);
+
+					// check if the player is online and kick them if they are
+					Player duplicate = Bukkit.getPlayer(UUID.fromString(s));
+
+					if (duplicate != null) {
+						
+						// Kick player synchronously.. Because it's a good thing to do
+						Bukkit.getScheduler().runTask(plugin, new Runnable() {
+							
+							public void run() {
+							
+								duplicate.kickPlayer(Lang.PLAYER_IP_AUTOBANNED.parseBanFormat(null, message));
+							
+							}
+							
+						});
+						
+					}
+
+					// check if announcements are want for this type of ban
+					if (Values.ANNOUNCE_BAN_USERNAME_OF_IP) {
+
+						// check if announcements are enabled for this command.. then release the
+						// annoucnement
+						if (Values.ANNOUNCE_BANIP) {
+
+							Action.broadcastMessage(Action.BAN,
+									Lang.AUTOBAN_BROADCAST.parseName(Banana.getPlayerCache().getLatestName(s)));
+
+						}
+
+					}
+
+				}
+
+			}
+
+		}
+		
+	}
+
+
+	@Override
+	public synchronized void fetchedName(String uuid, String playerName) {
+		
+		this.banIP(uuid, playerName);
+		
+	}
+	
 }

@@ -14,19 +14,22 @@ public class KickAllCommand implements CommandExecutor {
 	@Override
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 
-		if (!(sender instanceof Player)) {
-			
-			// run this if the sender is not a player
-			return new KickAllCommandConsole().runKickAllCommand(sender, args);
-			
-		}
+		boolean isConsole = !(sender instanceof Player);
+		String playerName;
 		
-		// run this if the sender is a player
-		Player player = (Player) sender;
-		
-		if (!player.hasPermission("banana.commands.kickall")) {
-			player.sendMessage(Lang.NO_PERMISSIONS.toString());
-			return true;
+		if (!isConsole) {
+			
+			if (!((Player)sender).hasPermission("banana.commands.kickall")) {
+				sender.sendMessage(Lang.NO_PERMISSIONS.toString());
+				return true;
+			}
+			
+			playerName = ((Player)sender).getName();
+			
+		} else {
+			
+			playerName = Lang.CONSOLE_NAME.toString();
+			
 		}
 		
 		String message = Lang.DEFAULT_KICK_MESSAGE.toString();
@@ -51,25 +54,25 @@ public class KickAllCommand implements CommandExecutor {
 		// loop through and kick all the players except the kicker
 		for (Player p : Bukkit.getServer().getOnlinePlayers()) {
 			
-			if (!p.getName().equalsIgnoreCase(player.getName())) {
-				p.kickPlayer(Lang.KICK_FORMAT.parseBanFormat(player.getName(), message));
+			if (isConsole || !p.getName().equalsIgnoreCase(playerName)) {
+				p.kickPlayer(Lang.KICK_FORMAT.parseBanFormat(playerName, message));
 			}
 			
 		}
 		
-		player.sendMessage(Lang.KICK_ALL_SUCCESS.toString());
+		sender.sendMessage(Lang.KICK_ALL_SUCCESS.toString());
 		
 		// publish the kickall to the database for the other servers
 		
 		if (args.length < 1) {
 		
 			// run the database update function, but tell it there was no message
-			Banana.getDatabaseManager().kickAllUpdatePublisher(player.getName(), "{NO_MESSAGE}");
+			Banana.getDatabaseManager().kickAllUpdatePublisher(playerName, "{NO_MESSAGE}");
 			
 		} else {
 			
 			// run the database update function and just pass the message to it
-			Banana.getDatabaseManager().kickAllUpdatePublisher(player.getName(), message);
+			Banana.getDatabaseManager().kickAllUpdatePublisher(playerName, message);
 			
 		}
 		return true;

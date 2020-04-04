@@ -13,24 +13,25 @@ public class DelWarning implements CommandExecutor {
 
 	@Override
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
+		
+		if (sender instanceof Player) {
 
-		if (!(sender instanceof Player)) {
+			if (!((Player)sender).hasPermission("banana.commands.delwarning")) {
+				sender.sendMessage(Lang.NO_PERMISSIONS.toString());
+				return true;
+			}
+
+			Banana.getDatabaseManager().logCommand(CommandType.DEL_WARNING, ((Player)sender).getUniqueId(), args, false);
 			
-			// run this if the sender is not a player
-			return new DelWarningCommandConsole().runDelWarningCommand(sender, args);
+		} else {
+			
+			Banana.getDatabaseManager().logCommand(CommandType.DEL_WARNING, null, args, true);
 			
 		}
 		
-		// This will run if the sender is a player
-		Player player = (Player) sender;
-		
-		if (!player.hasPermission("banana.commands.delwarning")) {
-			player.sendMessage(Lang.NO_PERMISSIONS.toString());
-			return true;
-		}
 		
 		if (args.length < 1) {
-			player.sendMessage(Lang.DEL_WARNING_WRONG_ARGS.toString());
+			sender.sendMessage(Lang.DEL_WARNING_WRONG_ARGS.toString());
 			return true;
 		}
 		
@@ -41,7 +42,8 @@ public class DelWarning implements CommandExecutor {
 			warnID = Integer.parseInt(args[0]);
 			
 		} catch (Exception e) {
-			player.sendMessage(Lang.NUMBER_EXPECTED.parseObject(args[0]));
+			
+			sender.sendMessage(Lang.NUMBER_EXPECTED.parseObject(args[0]));
 			return true;
 			
 		}
@@ -49,9 +51,7 @@ public class DelWarning implements CommandExecutor {
 		Banana.getDatabaseManager().decrementWarning(warnID);
 		Banana.getDatabaseManager().asyncDeleteWarning(warnID);
 		
-		player.sendMessage(Lang.WARNING_DELETE_SUCCESSFUL.toString());
-		
-		Banana.getDatabaseManager().logCommand(CommandType.DEL_WARNING, player.getUniqueId(), args, false);
+		sender.sendMessage(Lang.WARNING_DELETE_SUCCESSFUL.toString());
 		
 		return true;
 	}

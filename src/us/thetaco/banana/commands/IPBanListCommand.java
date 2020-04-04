@@ -9,7 +9,6 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import info.dyndns.thetaco.uuid.api.Main;
 import us.thetaco.banana.Banana;
 import us.thetaco.banana.utils.CommandType;
 import us.thetaco.banana.utils.Lang;
@@ -19,29 +18,28 @@ public class IPBanListCommand implements CommandExecutor  {
 	@Override
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 
-		if (!(sender instanceof Player)) {
+		if (sender instanceof Player) {
 			
-			// run this if the sender is not a player
-			return new IPBanListCommandConsole().runIPBanListCommand(sender, args);
+			if (!((Player)sender).hasPermission("banana.commands.ipbanlist")) {
+				sender.sendMessage(Lang.NO_PERMISSIONS.toString());
+				return true;
+			}
+			
+			Banana.getDatabaseManager().logCommand(CommandType.IPBAN_LIST, ((Player)sender).getUniqueId(), args, false);
+			
+		} else {
+			
+			Banana.getDatabaseManager().logCommand(CommandType.IPBAN_LIST, null, args, true);
 			
 		}
-		
-		// run this if the sender is a player
-		Player player = (Player) sender;
-		
-		if (!player.hasPermission("banana.commands.ipbanlist")) {
-			player.sendMessage(Lang.NO_PERMISSIONS.toString());
-			return true;
-		}
+
 		
 		Set<String> currentyBanned = Banana.getBanCache().getIPBans();
 		List<String> currentlyBannedNames = new ArrayList<String>();
 		
-		Main main = new Main();
-		
 		for (String s : currentyBanned) {
 			
-			String name = main.getLatestName(s);
+			String name = Banana.getPlayerCache().getLatestName(s);
 			
 			if (name == null) {
 				currentlyBannedNames.add(s);
@@ -75,10 +73,8 @@ public class IPBanListCommand implements CommandExecutor  {
 			
 		}
 		
-		player.sendMessage(Lang.IP_BAN_LIST_HEADER.toString());
-		player.sendMessage(bannedCompiled);
-		
-		Banana.getDatabaseManager().logCommand(CommandType.IPBAN_LIST, player.getUniqueId(), args, false);
+		sender.sendMessage(Lang.IP_BAN_LIST_HEADER.toString());
+		sender.sendMessage(bannedCompiled);
 		
 		return true;
 	}
